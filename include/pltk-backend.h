@@ -1,4 +1,5 @@
 #include <pl32-memory.h>
+#include <pl32-file.h>
 
 typedef struct pltkwindow pltkwindow_t;
 typedef struct pltkcolor {

@@ -67,20 +67,20 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 	if(width > displaySize[0])
 		width = displaySize[0];
 	if(height > displaySize[1])
-		height = diplaySize[1];
+		height = displaySize[1];
 
 	plmt_t* windowMT = plMTInit((width * height * bytesPerPixel) + (1024 * 1024));
-	pltkwindow_t* retWindow = plMTAllocE(mt, sizeof(pltkwindow_t));
+	pltkwindow_t* retWindow = plMTAllocE(windowMT, sizeof(pltkwindow_t));
 
 	retWindow->position[0] = x;
 	retWindow->position[1] = y;
 	retWindow->dimensions[0] = width;
 	retWindow->dimensions[1] = height;
-	retWindow->windowBuffer = plMTAllocE(mt, width * height * bytesPerPixel);
+	retWindow->windowBuffer = plMTAllocE(windowMT, width * height * bytesPerPixel);
 	retWindow->inFocus = true;
 	retWindow->disableWindowBar = false;
 	retWindow->windowId = windowAmnt++;
-	retWindow->mt = mt;
+	retWindow->mt = windowMT;
 
 	return retWindow;
 }
@@ -105,7 +105,7 @@ void plTKFBWrite(plfatptr_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 		for(int j = 0; j < drawDim[0]; j++){
 			for(int k = 0; k < bytesPerPixel; k++){
 				startPtr[j * bytesPerPixel + k] = *dataByte;
-				if(dataByte < data->array + data->size - 1)
+				if(dataByte < (uint8_t*)data->array + data->size - 1)
 					dataByte++;
 				else
 					dataByte = data->array;
@@ -137,7 +137,10 @@ void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
 	plTKWindowRender(window);
 }
 
-void plTKWindowLine(pltkwindow_t* window, float xStart, float yStart, float xStop, float yStop, pltkcolor_t color){
+void plTKWindowLine(pltkwindow_t* window, float xStart, uint16_t yStart, float xStop, uint16_t yStop, pltkcolor_t color){
+	xStart = round(xStart);
+	xStop = round(xStop);
+
 	if(xStart > window->dimensions[0])
 		xStart = window->dimensions[0];
 	else if (xStart < 0)
@@ -145,8 +148,6 @@ void plTKWindowLine(pltkwindow_t* window, float xStart, float yStart, float xSto
 
 	if(yStart > window->dimensions[1])
 		yStart = window->dimensions[1];
-	else if(yStart < 0)
-		yStart = 0;
 
 	if(xStop > window->dimensions[0])
 		xStop = window->dimensions[1];
@@ -154,12 +155,10 @@ void plTKWindowLine(pltkwindow_t* window, float xStart, float yStart, float xSto
 		xStop = 0;
 
 	if(yStop > window->dimensions[1])
-		yStart = window->dimensions[1];
-	else if(yStop < 0)
-		yStop = 0;
+		yStop = window->dimensions[1];
 
 	if(yStart > yStop){
-		float holder = yStart;
+		uint16_t holder = yStart;
 		yStart = yStop;
 		yStop = holder;
 
@@ -168,6 +167,10 @@ void plTKWindowLine(pltkwindow_t* window, float xStart, float yStart, float xSto
 		xStop = holder;
 	}
 
-	float slope = (xStop - xStart) / (yStop - yStart);
-	
+	int32_t xDiff = xStop - xStart;
+	uint16_t yDiff = yStop - yStart;
+	if(xDiff < 0)
+		xDiff = -xDiff;
+
+	float slope = xDiff / yDiff;
 }
