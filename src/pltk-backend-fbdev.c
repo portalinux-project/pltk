@@ -24,6 +24,9 @@ struct pltkwindow {
 };
 
 void plTKInit(){
+	fputs("\x1b[?25l", stdout);
+	fflush(stdout);
+
 	fb = open("/dev/fb0", O_RDWR);
 	if(fb == -1)
 		plPanic("plTKInit", true, false);
@@ -39,13 +42,13 @@ void plTKInit(){
 
 	plFGets(stringBuf, 256, dispSize);
 	convertBuf = strtok(stringBuf, ",\n");
-	displaySize[0] = strtol(convertBuf, &strtolBuf, 10) - 1;
+	displaySize[0] = strtol(convertBuf, &strtolBuf, 10);
 	convertBuf = strtok(NULL, ",\n");
-	displaySize[1] = strtol(convertBuf, &strtolBuf, 10) - 1;
+	displaySize[1] = strtol(convertBuf, &strtolBuf, 10);
 	plFClose(dispSize);
 
 	plFGets(stringBuf, 256, strideSize);
-	scanlineSize = strtol(stringBuf, &strtolBuf, 10);
+	scanlineSize = strtol(stringBuf, &strtolBuf, 10) / 4;
 	plFClose(strideSize);
 
 	plFGets(stringBuf, 256, bitsPerPixel);
@@ -55,19 +58,19 @@ void plTKInit(){
 	plMTStop(mt);
 
 	fbmem = mmap(NULL, scanlineSize * displaySize[1] * bytesPerPixel, PROT_WRITE, MAP_SHARED, fb, 0);
-	if(fbmem == NULL)
-		plPanic("plTKInit: Failed to map framebuffer to memory", false, false);
+	if(fbmem == MAP_FAILED)
+		plPanic("plTKInit: Failed to map framebuffer to memory", false, true);
 }
 
 pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height){
 	if(x > displaySize[0])
-		x = displaySize[0] - 1;
+		x = displaySize[0] - 2;
 	if(y > displaySize[0])
-		y = displaySize[1] - 1;
+		y = displaySize[1] - 2;
 	if(width > displaySize[0])
-		width = displaySize[0];
+		width = displaySize[0] - 1;
 	if(height > displaySize[1])
-		height = displaySize[1];
+		height = displaySize[1] - 1;
 
 	plmt_t* windowMT = plMTInit((width * height * bytesPerPixel) + (1024 * 1024));
 	pltkwindow_t* retWindow = plMTAllocE(windowMT, sizeof(pltkwindow_t));
@@ -91,8 +94,8 @@ void plTKFBWrite(plfatptr_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 
 	uint8_t* startPtr = fbmem + (xStart * yStart * bytesPerPixel);
 
-	int32_t xOverdraw = displaySize[0] - (xStart + xStop);
-	int32_t yOverdraw = displaySize[1] - (yStart + yStop);
+	int32_t xOverdraw = displaySize[0] - (xStart + xStop) - 1;
+	int32_t yOverdraw = displaySize[1] - (yStart + yStop) - 1;
 	uint16_t drawDim[2] = {xStop, yStop};
 
 	if(xOverdraw > 0)
@@ -169,8 +172,7 @@ void plTKWindowLine(pltkwindow_t* window, float xStart, uint16_t yStart, float x
 
 	int32_t xDiff = xStop - xStart;
 	uint16_t yDiff = yStop - yStart;
-	if(xDiff < 0)
-		xDiff = -xDiff;
 
 	float slope = xDiff / yDiff;
+	uint8_t* startPtr = fbmem + (yStart * scanlineSize * bytesPerPixel) + (xStart * bytesPerPixel);
 }
