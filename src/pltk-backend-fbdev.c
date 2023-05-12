@@ -62,6 +62,39 @@ void plTKInit(){
 		plPanic("plTKInit: Failed to map framebuffer to memory", false, true);
 }
 
+void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop){
+	if(data == NULL || data->dataPtr.array == NULL)
+		plPanic("plTKFBWrite: Data buffer was set to NULL", false, true);
+
+	if(data->bytesPerPixel != bytesPerPixel)
+		plPanic("plTKFBWrite: Mismached bitness between data buffer and framebuffer", false, true);
+
+	uint8_t* startPtr = fbmem + (xStart * yStart * bytesPerPixel);
+
+	int32_t xOverdraw = displaySize[0] - (xStart + xStop) - 1;
+	int32_t yOverdraw = displaySize[1] - (yStart + yStop) - 1;
+	uint16_t drawDim[2] = {xStop, yStop};
+
+	if(xOverdraw > 0)
+		drawDim[0] -= xOverdraw;
+	if(yOverdraw > 0)
+		drawDim[1] -= yOverdraw;
+
+	uint8_t* dataByte = data->dataPtr.array;
+	for(int i = 0; i < drawDim[1]; i++){
+		for(int j = 0; j < drawDim[0]; j++){
+			for(int k = 0; k < bytesPerPixel; k++){
+				startPtr[j * bytesPerPixel + k] = *dataByte;
+				if(dataByte < (uint8_t*)data->dataPtr.array + data->dataPtr.size - 1)
+					dataByte++;
+				else
+					dataByte = data->dataPtr.array;
+			}
+		}
+		startPtr += scanlineSize * bytesPerPixel;
+	}
+}
+
 pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height){
 	if(x > displaySize[0])
 		x = displaySize[0] - 2;
@@ -88,59 +121,31 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 	return retWindow;
 }
 
-void plTKFBWrite(plfatptr_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop){
-	if(data == NULL)
-		plPanic("plTKFBWrite: Data buffer was set to NULL", false, true);
-
-	uint8_t* startPtr = fbmem + (xStart * yStart * bytesPerPixel);
-
-	int32_t xOverdraw = displaySize[0] - (xStart + xStop) - 1;
-	int32_t yOverdraw = displaySize[1] - (yStart + yStop) - 1;
-	uint16_t drawDim[2] = {xStop, yStop};
-
-	if(xOverdraw > 0)
-		drawDim[0] -= xOverdraw;
-	if(yOverdraw > 0)
-		drawDim[1] -= yOverdraw;
-
-	uint8_t* dataByte = data->array;
-	for(int i = 0; i < drawDim[1]; i++){
-		for(int j = 0; j < drawDim[0]; j++){
-			for(int k = 0; k < bytesPerPixel; k++){
-				startPtr[j * bytesPerPixel + k] = *dataByte;
-				if(dataByte < (uint8_t*)data->array + data->size - 1)
-					dataByte++;
-				else
-					dataByte = data->array;
-			}
-		}
-		startPtr += scanlineSize * bytesPerPixel;
-	}
-}
-
 void plTKWindowRender(pltkwindow_t* window){
-	plfatptr_t dataPtr;
-	dataPtr.array = window->windowBuffer;
-	dataPtr.size = window->dimensions[0] * window->dimensions[1] * bytesPerPixel;
+	pltkdata_t data;
+	data.dataPtr.array = window->windowBuffer;
+	data.dataPtr.size = window->dimensions[0] * window->dimensions[1] * bytesPerPixel;
+	data.bytesPerPixel = bytesPerPixel;
 
-	plTKFBWrite(&dataPtr, window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
+	plTKFBWrite(&data, window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
 }
 
 void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
 	uint8_t clear = 0;
 
-	plfatptr_t dataPtr;
-	dataPtr.array = &clear;
-	dataPtr.size = 1;
+	pltkdata_t data;
+	data.dataPtr.array = &clear;
+	data.dataPtr.size = 1;
+	data.bytesPerPixel = bytesPerPixel;
 
-	plTKFBWrite(&dataPtr, window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
+	plTKFBWrite(&data, window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
 
 	window->position[0] = x;
 	window->position[1] = y;
 	plTKWindowRender(window);
 }
 
-void plTKWindowLine(pltkwindow_t* window, float xStart, uint16_t yStart, float xStop, uint16_t yStop, pltkcolor_t color){
+void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkcolor_t color){
 	xStart = round(xStart);
 	xStop = round(xStop);
 
@@ -174,5 +179,15 @@ void plTKWindowLine(pltkwindow_t* window, float xStart, uint16_t yStart, float x
 	uint16_t yDiff = yStop - yStart;
 
 	float slope = xDiff / yDiff;
-	uint8_t* startPtr = fbmem + (yStart * scanlineSize * bytesPerPixel) + (xStart * bytesPerPixel);
+	float xCurrent = xStart;
+	uint16_t scanlineStep = (scanlineSize - xStart) * bytesPerPixel;
+	uint8_t* startPtr = window->windowBuffer + (yStart * scanlineSize * bytesPerPixel) + (xStart * bytesPerPixel);
+
+	for(int i = 0; i <= yDiff; i++){
+		for(int j = 0; j < bytesPerPixel; i++)
+			startPtr[j] = color.bytes[j];
+
+		xCurrent += slope;
+		startPtr += scanlineStep + ((uint16_t)round(xCurrent) * bytesPerPixel);
+	}
 }
