@@ -1,10 +1,11 @@
 #include <pltk-backend.h>
 #include <math.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/mman.h>
 
-int fb;
-byte_t* fbmem;
+int fb = -2;
+byte_t* fbmem = NULL;
 uint16_t displaySize[2];
 uint16_t scanlineSize;
 uint8_t bytesPerPixel;
@@ -26,10 +27,10 @@ struct pltkwindow {
 
 void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop){
 	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
-		plPanic("plTKFBWrite: Given data buffer is either empty or invalid", false, true);
+		plPanic("\x1b[?25hplTKFBWrite: Given data buffer is either empty or invalid", false, true);
 
 	if(data->bytesPerPixel != bytesPerPixel)
-		plPanic("plTKFBWrite: Mismached bitness between data buffer and framebuffer", false, true);
+		plPanic("\x1b[?25hplTKFBWrite: Mismached bitness between data buffer and framebuffer", false, true);
 
 	uint8_t* startPtr = fbmem + (scanlineSize * yStart * bytesPerPixel) + (xStart * bytesPerPixel);
 
@@ -67,13 +68,26 @@ void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t ySto
 	plTKFBWrite(&data, xStart, yStart, xStop, yStop);
 }
 
+void plTKPanic(string_t string, bool usePerror, bool devBug){
+	if(fb != -1 && fbmem != MAP_FAILED)
+		plTKFBClear(0, 0, displaySize[0] - 1, displaySize[1] - 1);
+
+	fputs("\x1b[2J\x1b[?25h", stdout);
+	fflush(stdout);
+
+	plPanic(string, usePerror, devBug);
+}
+
 void plTKInit(){
-	fputs("\x1b[?25l", stdout);
+	if(fbmem != NULL)
+		return;
+
+	fputs("\x1b[2J\x1b[?25l", stdout);
 	fflush(stdout);
 
 	fb = open("/dev/fb0", O_RDWR);
 	if(fb == -1)
-		plPanic("plTKInit", true, false);
+		plTKPanic("plTKInit", true, false);
 
 	plmt_t* mt = plMTInit(0);
 
@@ -103,12 +117,30 @@ void plTKInit(){
 
 	fbmem = mmap(NULL, scanlineSize * displaySize[1] * bytesPerPixel, PROT_WRITE, MAP_SHARED, fb, 0);
 	if(fbmem == MAP_FAILED)
-		plPanic("plTKInit: Failed to map framebuffer to memory", false, true);
+		plTKPanic("plTKInit: Failed to map framebuffer to memory", false, true);
 
 	plTKFBClear(0, 0, displaySize[0] - 1, displaySize[1] - 1);
 }
 
+void plTKStop(){
+	if(fbmem == NULL)
+		plPanic("plTKStop: PLTK hasn't been initialized yet", false, true);
+
+	plTKFBClear(0, 0, displaySize[0] - 1, displaySize[1] - 1);
+	munmap(fbmem, displaySize[0] * displaySize[1] * bytesPerPixel);
+	close(fb);
+
+	fb = -2;
+	fbmem = NULL;
+
+	fputs("\x1b[2J\x1b[?25h", stdout);
+	fflush(stdout);
+}
+
 pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height){
+	if(fbmem == NULL)
+		plPanic("plTKCreateWindow: PLTK hasn't been initialized yet", false, true);
+
 	if(x > displaySize[0])
 		x = displaySize[0] - 2;
 	if(y > displaySize[0])
@@ -138,8 +170,11 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 }
 
 void plTKWindowRender(pltkwindow_t* window){
+	if(fbmem == NULL)
+		plPanic("plTKWindowRender: PLTK hasn't been initialized yet", false, true);
+
 	if(window == NULL)
-		plPanic("plTKWindowRender: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowRender: Window handle was set as NULL", false, true);
 
 	pltkdata_t data;
 	data.dataPtr.array = window->windowBuffer;
@@ -151,8 +186,11 @@ void plTKWindowRender(pltkwindow_t* window){
 }
 
 void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
+	if(fbmem == NULL)
+		plPanic("plTKWindowMove: PLTK hasn't been initialized yet", false, true);
+
 	if(window == NULL)
-		plPanic("plTKWindowMove: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowMove: Window handle was set as NULL", false, true);
 
 	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1]);
 	window->position[0] = x;
@@ -162,7 +200,7 @@ void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
 
 void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t color){
 	if(window == NULL)
-		plPanic("plTKWindowPixel: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowPixel: Window handle was set as NULL", false, true);
 
 	uint8_t* startPtr = window->windowBuffer + (x * y * bytesPerPixel);
 	for(int i = 0; i < bytesPerPixel; i++){
@@ -172,7 +210,7 @@ void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t c
 
 void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkcolor_t color){
 	if(window == NULL)
-		plPanic("plTKWindowRender: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowRender: Window handle was set as NULL", false, true);
 
 	xStart = round(xStart);
 	xStop = round(xStop);
@@ -219,10 +257,10 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 
 void plTKConvertBPP(pltkdata_t* data, pltkwindow_t* window){
 	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
-		plPanic("plTKConvertBPP: Given data buffer is either empty or invalid", false, true);
+		plTKPanic("plTKConvertBPP: Given data buffer is either empty or invalid", false, true);
 
 	if(window == NULL)
-		plPanic("plTKConvertBPP: Window handle was set as NULL", false, true);
+		plTKPanic("plTKConvertBPP: Window handle was set as NULL", false, true);
 
 	//TODO: Add proper bpp downsampling
 	if(data->bytesPerPixel > bytesPerPixel){
@@ -290,10 +328,10 @@ void plTKConvertBPP(pltkdata_t* data, pltkwindow_t* window){
 
 void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkdata_t* data){
 	if(window == NULL)
-		plPanic("plTKWindowFBWrite: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowFBWrite: Window handle was set as NULL", false, true);
 
 	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
-		plPanic("plTKWindowFBWrite: Given data buffer is either empty or invalid", false, true);
+		plTKPanic("plTKWindowFBWrite: Given data buffer is either empty or invalid", false, true);
 
 	if(data->bytesPerPixel != bytesPerPixel)
 		plTKConvertBPP(data, window);
@@ -334,7 +372,7 @@ void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, u
 
 void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, plchar_t utfChar, pltkcolor_t color){
 	if(window == NULL)
-		plPanic("plTKWindowRenderFont: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowRenderFont: Window handle was set as NULL", false, true);
 
 	for(int i = 0; i < font.fontSize[1]; i++){
 		for(int j = 0; j < font.fontSize[0]; j++){
@@ -342,4 +380,16 @@ void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont
 				plTKWindowPixel(window, x + j, y + i, color);
 		}
 	}
+}
+
+void plTKWindowClose(pltkwindow_t* window){
+	if(fbmem == NULL)
+		plPanic("plTKWindowClose: PLTK hasn't been initialized yet", false, true);
+
+	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1]);
+
+	plmt_t* mt = window->mt;
+	plMTFree(mt, window->windowBuffer);
+	plMTFree(mt, window);
+	plMTStop(mt);
 }
