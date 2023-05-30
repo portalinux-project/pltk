@@ -36,7 +36,7 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 
 	int32_t xOverdraw = displaySize[0] - (xStart + xStop) - 1;
 	int32_t yOverdraw = displaySize[1] - (yStart + yStop) - 1;
-	uint16_t drawDim[2] = {xStop, yStop};
+	uint16_t drawDim[2] = {xStop - xStart, yStop - yStart};
 
 	if(xOverdraw > 0)
 		drawDim[0] -= xOverdraw;
@@ -133,7 +133,7 @@ void plTKStop(){
 	fb = -2;
 	fbmem = NULL;
 
-	fputs("\x1b[2J\x1b[?25h", stdout);
+	fputs("\x1b[2J\x1b[1;1H\x1b[?25h", stdout);
 	fflush(stdout);
 }
 
@@ -169,6 +169,18 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 	return retWindow;
 }
 
+void plTKWindowClose(pltkwindow_t* window){
+	if(fbmem == NULL)
+		plPanic("plTKWindowClose: PLTK hasn't been initialized yet", false, true);
+
+	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
+
+	plmt_t* mt = window->mt;
+	plMTFree(mt, window->windowBuffer);
+	plMTFree(mt, window);
+	plMTStop(mt);
+}
+
 void plTKWindowRender(pltkwindow_t* window){
 	if(fbmem == NULL)
 		plPanic("plTKWindowRender: PLTK hasn't been initialized yet", false, true);
@@ -202,7 +214,7 @@ void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t c
 	if(window == NULL)
 		plTKPanic("plTKWindowPixel: Window handle was set as NULL", false, true);
 
-	uint8_t* startPtr = window->windowBuffer + (x * y * bytesPerPixel);
+	uint8_t* startPtr = window->windowBuffer + (x * bytesPerPixel) + (y * window->dimensions[0] * bytesPerPixel);
 	for(int i = 0; i < bytesPerPixel; i++){
 		startPtr[i] = color.bytes[i];
 	}
@@ -246,8 +258,6 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 
 	float slope = xDiff / yDiff;
 	float xCurrent = xStart;
-	uint16_t scanlineStep = (window->dimensions[0] - xStart) * bytesPerPixel;
-	uint8_t* startPtr = window->windowBuffer + (xStart * yStart * bytesPerPixel);
 
 	for(int i = 0; i <= yDiff; i++){
 		plTKWindowPixel(window, (uint16_t)round(xCurrent), yStart + i, color);
@@ -370,26 +380,25 @@ void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, u
 	}
 }
 
+int plTKConvertUTFIntoIndex(plchar_t utfChar){
+	// TODO: Convert UTF-8 into UTF-32 and then check whether the UTF char is printable or not
+	return 0;
+}
+
 void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, plchar_t utfChar, pltkcolor_t color){
 	if(window == NULL)
 		plTKPanic("plTKWindowRenderFont: Window handle was set as NULL", false, true);
 
+	int fontIndex = utfChar.bytes[0] - 32;
+	if(fontIndex > 94)
+		fontIndex = plTKConvertUTFIntoIndex(utfChar);
+
+	uint8_t* startPtr = font.data->dataPtr.array + (fontIndex * font.fontSize[1] * font.fontSize[0]);
+
 	for(int i = 0; i < font.fontSize[1]; i++){
 		for(int j = 0; j < font.fontSize[0]; j++){
-			if(((uint8_t*)font.data->dataPtr.array)[i] != 0)
+			if(startPtr[i + j] != 0)
 				plTKWindowPixel(window, x + j, y + i, color);
 		}
 	}
-}
-
-void plTKWindowClose(pltkwindow_t* window){
-	if(fbmem == NULL)
-		plPanic("plTKWindowClose: PLTK hasn't been initialized yet", false, true);
-
-	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1]);
-
-	plmt_t* mt = window->mt;
-	plMTFree(mt, window->windowBuffer);
-	plMTFree(mt, window);
-	plMTStop(mt);
 }
