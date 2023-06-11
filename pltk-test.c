@@ -4,7 +4,7 @@
 int main(){
 	plTKInit();
 
-	pltkwindow_t* mainWindow = plTKCreateWindow(500, 200, 640, 480);
+	pltkwindow_t* mainWindow = plTKCreateWindow(20, 20, 320, 240);
 	pltkcolor_t lineColor;
 
 	lineColor.bytes[0] = 255;

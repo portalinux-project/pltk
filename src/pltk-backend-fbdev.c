@@ -38,10 +38,10 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 	int32_t yOverdraw = displaySize[1] - (yStart + yStop) - 1;
 	uint16_t drawDim[2] = {xStop - xStart, yStop - yStart};
 
-	if(xOverdraw > 0)
-		drawDim[0] -= xOverdraw;
-	if(yOverdraw > 0)
-		drawDim[1] -= yOverdraw;
+	if(xOverdraw < 0)
+		drawDim[0] += xOverdraw;
+	if(yOverdraw < 0)
+		drawDim[1] += yOverdraw;
 
 	uint8_t* dataByte = data->dataPtr.array;
 	for(int i = 0; i < drawDim[1]; i++){
@@ -224,21 +224,14 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 	if(window == NULL)
 		plTKPanic("plTKWindowRender: Window handle was set as NULL", false, true);
 
-	xStart = round(xStart);
-	xStop = round(xStop);
-
 	if(xStart > window->dimensions[0])
 		xStart = window->dimensions[0];
-	else if (xStart < 0)
-		xStart = 0;
 
 	if(yStart > window->dimensions[1])
 		yStart = window->dimensions[1];
 
 	if(xStop > window->dimensions[0])
 		xStop = window->dimensions[1];
-	else if(xStop < 0)
-		xStop = 0;
 
 	if(yStop > window->dimensions[1])
 		yStop = window->dimensions[1];
@@ -256,12 +249,34 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 	int32_t xDiff = xStop - xStart;
 	uint16_t yDiff = yStop - yStart;
 
-	float slope = xDiff / yDiff;
-	float xCurrent = xStart;
+	if(yDiff != 0){
+		uint16_t xCurrent = xStart;
+		float slope = xDiff / yDiff;
+		float xNext = xCurrent + slope;
 
-	for(int i = 0; i <= yDiff; i++){
-		plTKWindowPixel(window, (uint16_t)round(xCurrent), yStart + i, color);
-		xCurrent += slope;
+		for(int i = 0; i <= yDiff; i++){
+			uint16_t xLimit = round(xNext);
+			while(xCurrent != xLimit){
+				plTKWindowPixel(window, xCurrent, yStart + i, color);
+				if(xCurrent < xLimit)
+					xCurrent++;
+				else
+					xCurrent--;
+			}
+			xCurrent = xLimit;
+			xNext += slope;
+		}
+	}else{
+		if(xStop < xStart){
+			uint8_t holder = xStart;
+			xStart = xStop;
+			xStop = holder;
+		}
+
+		while(xStart < xStop){
+			plTKWindowPixel(window, xStart, yStart, color);
+			xStart++;
+		}
 	}
 }
 
@@ -380,20 +395,11 @@ void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, u
 	}
 }
 
-int plTKConvertUTFIntoIndex(plchar_t utfChar){
-	// TODO: Convert UTF-8 into UTF-32 and then check whether the UTF char is printable or not
-	return 0;
-}
-
-void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, plchar_t utfChar, pltkcolor_t color){
+void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, uint32_t index, pltkcolor_t color){
 	if(window == NULL)
 		plTKPanic("plTKWindowRenderFont: Window handle was set as NULL", false, true);
 
-	int fontIndex = utfChar.bytes[0] - 32;
-	if(fontIndex > 94)
-		fontIndex = plTKConvertUTFIntoIndex(utfChar);
-
-	uint8_t* startPtr = font.data->dataPtr.array + (fontIndex * font.fontSize[1] * font.fontSize[0]);
+	uint8_t* startPtr = font.data->dataPtr.array + (index * font.fontSize[1] * font.fontSize[0]);
 
 	for(int i = 0; i < font.fontSize[1]; i++){
 		for(int j = 0; j < font.fontSize[0]; j++){
