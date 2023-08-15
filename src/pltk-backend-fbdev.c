@@ -399,11 +399,11 @@ void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont
 	if(window == NULL)
 		plTKPanic("plTKWindowRenderFont: Window handle was set as NULL", false, true);
 
-	uint8_t* startPtr = font.data->dataPtr.array + (index * font.fontSize[1] * font.fontSize[0]);
+	uint8_t* startPtr = font.data->dataPtr.array + ((font.fontSize[0] * font.fontSize[1]) * index);
 
 	for(int i = 0; i < font.fontSize[1]; i++){
 		for(int j = 0; j < font.fontSize[0]; j++){
-			if(startPtr[i + j] != 0)
+			if(startPtr[(i * font.fontSize[0]) + j] != 0)
 				plTKWindowPixel(window, x + j, y + i, color);
 		}
 	}
