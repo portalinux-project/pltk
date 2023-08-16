@@ -2,6 +2,7 @@
 #include <pl32-file.h>
 
 typedef struct pltkwindow pltkwindow_t;
+typedef struct pltkinput pltkinput_t;
 typedef plchar_t pltkcolor_t;
 typedef struct pltkdata {
 	plfatptr_t dataPtr;
@@ -13,6 +14,11 @@ typedef struct pltkfont {
 	uint16_t fontSize[2];
 	bool utf8Support;
 } pltkfont_t;
+typedef enum pltkitype {
+	PLTK_KEYBOARD,
+	PLTK_POINTER,
+	PLTK_CUSTOM,
+} pltkitype_t;
 
 void plTKInit();
 void plTKStop();
@@ -26,3 +32,7 @@ void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t c
 void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkcolor_t color);
 void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkdata_t* data);
 void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, uint32_t index, pltkcolor_t color);
+
+pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice);
+void plTKInputClose(pltkinput_t* inputDevice);
+uint8_t plTKGetInput(pltkinput_t* inputDevice);
