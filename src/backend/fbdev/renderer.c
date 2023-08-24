@@ -20,8 +20,8 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 
 	uint8_t* startPtr = fbmem + (fbinfo.scanlineSize * yStart * fbinfo.bytesPerPixel) + (xStart * fbinfo.bytesPerPixel);
 
-	int32_t xOverdraw = fbinfo.displaySize[0] - (xStart + (xStop - xStart)) - 1;
-	int32_t yOverdraw = fbinfo.displaySize[1] - (yStart + (yStop - yStart)) - 1;
+	int32_t xOverdraw = fbinfo.displaySize[0] - xStop - 1;
+	int32_t yOverdraw = fbinfo.displaySize[1] - yStop - 1;
 	uint16_t drawDim[2] = {xStop - xStart, yStop - yStart};
 
 	if(xOverdraw < 0){
