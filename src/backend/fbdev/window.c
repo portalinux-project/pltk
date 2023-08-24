@@ -23,9 +23,7 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 	retWindow->dimensions[0] = width;
 	retWindow->dimensions[1] = height;
 	retWindow->windowBuffer = plMTAllocE(windowMT, width * height * fbinfo.bytesPerPixel);
-	retWindow->inFocus = true;
-	retWindow->disableWindowBar = false;
-	retWindow->windowId = windowAmnt++;
+	retWindow->windowId = plTKFBGetNewWindowID();
 	retWindow->mt = windowMT;
 
 	for(int i = 0; i < (width * height * fbinfo.bytesPerPixel); i++)
@@ -35,7 +33,7 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 }
 
 void plTKWindowClose(pltkwindow_t* window){
-	if(fbmem == NULL)
+	if(plTKIsFBReady() == false)
 		plPanic("plTKWindowClose: PLTK hasn't been initialized yet", false, true);
 
 	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
@@ -47,12 +45,13 @@ void plTKWindowClose(pltkwindow_t* window){
 }
 
 void plTKWindowRender(pltkwindow_t* window){
-	if(fbmem == NULL)
+	if(plTKIsFBReady() == false)
 		plPanic("plTKWindowRender: PLTK hasn't been initialized yet", false, true);
 
 	if(window == NULL)
 		plTKPanic("plTKWindowRender: Window handle was set as NULL", false, true);
 
+	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 	pltkdata_t data;
 	data.dataPtr.array = window->windowBuffer;
 	data.dataPtr.size = window->dimensions[0] * window->dimensions[1] * fbinfo.bytesPerPixel;
@@ -63,13 +62,13 @@ void plTKWindowRender(pltkwindow_t* window){
 }
 
 void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
-	if(fbmem == NULL)
+	if(plTKIsFBReady() == false)
 		plPanic("plTKWindowMove: PLTK hasn't been initialized yet", false, true);
 
 	if(window == NULL)
 		plTKPanic("plTKWindowMove: Window handle was set as NULL", false, true);
 
-	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1]);
+	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
 	window->position[0] = x;
 	window->position[1] = y;
 	plTKWindowRender(window);

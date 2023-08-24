@@ -38,6 +38,7 @@ typedef enum pltkievent {
 } pltkievent_t;
 
 typedef enum pltkkey {
+	PLTK_KEY_ERROR,
 	PLTK_KEY_ESC,
 	PLTK_KEY_1,
 	PLTK_KEY_2,
@@ -146,14 +147,14 @@ typedef enum pltkkey {
 	PLTK_KEY_BACK
 } pltkkey_t;
 
-typedef pltkevent {
-	pltkitype_t type;
+typedef struct pltkevent {
+	pltkievent_t type;
 	unsigned int value;
 } pltkevent_t;
 
 void plTKPanic(string_t string, bool usePerror, bool devBug);
 
-void plTKInit();
+void plTKInit(uint8_t screen);
 void plTKStop();
 
 pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
@@ -166,6 +167,6 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkdata_t* data);
 void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, uint32_t index, pltkcolor_t color);
 
-pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, plmt_t* mt);
+pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool nonblock, plmt_t* mt);
 void plTKInputClose(pltkinput_t* inputDevice);
 pltkevent_t plTKGetInput(pltkinput_t* inputDevice);

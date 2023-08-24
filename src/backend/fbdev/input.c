@@ -6,17 +6,17 @@ struct pltkinput {
 	plmt_t* mt;
 };
 
-typedef pltklinuxevent {
+typedef struct pltklinuxevent {
 	struct timeval time;
 	unsigned short type;
 	unsigned short code;
 	unsigned int value;
 } pltklinuxevent_t;
 
-pltkitype_t plTKEvdevEventTranslator(pltklinuxevent_t* rawEvent){
+pltkievent_t plTKEvdevEventTranslator(pltklinuxevent_t* rawEvent){
 	switch(rawEvent->type){
 		case EV_SYN:
-			return PLTK_SYNC
+			return PLTK_SYNC;
 		case EV_KEY:
 			if(rawEvent->value == 0)
 				return PLTK_KEYUP;
@@ -44,6 +44,8 @@ pltkitype_t plTKEvdevEventTranslator(pltklinuxevent_t* rawEvent){
 			}
 			break;
 	}
+
+	return PLTK_ERROR;
 }
 
 pltkkey_t plTKEvdevKeyTranslator(pltklinuxevent_t* rawEvent){
@@ -250,42 +252,36 @@ pltkkey_t plTKEvdevKeyTranslator(pltklinuxevent_t* rawEvent){
 			return PLTK_KEY_INSERT;
 		case KEY_DELETE:
 			return PLTK_KEY_DELETE;
+		case BTN_LEFT:
+			return PLTK_KEY_LEFTCLICK;
+		case BTN_RIGHT:
+			return PLTK_KEY_RIGHTCLICK;
+		case BTN_MIDDLE:
+			return PLTK_KEY_MIDDLECLICK;
+		default:
+			return PLTK_KEY_ERROR;
 	}
 }
 
-pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, plmt_t* mt){
-	DIR* inputDir = opendir("/sys/class/input")
-	struct dirent* dirEntry;
+pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool nonblock, plmt_t* mt){
 	pltkinput_t* retStruct = plMTAllocE(mt, sizeof(pltkinput_t));
+	char buffer[255] = "";
+	int openFlags = O_RDONLY;
 	retStruct->fd = -1;
 
-	while((dirEntry = readdir(inputDir)) != NULL){
-		char buffer[255] = "";
-		snprintf(buffer, 255, "/sys/class/input/%s/name", dirEntry->d_name);
+	if(specificDevice != NULL)
+		snprintf(buffer, 255, "/dev/input/%s", specificDevice);
 
-		if(strstr(buffer, "event") != NULL){
-			int fileHandle = open(buffer, O_RDONLY);
-			read(fileHandle, buffer, 255);
-			close(fileHandle);
+	if(nonblock == true)
+		openFlags = O_RDONLY | O_NONBLOCK;
 
-			switch(devType){
-				case PLTK_KEYBOARD:
-					retStruct->type = PLTK_KEYBOARD;
-					if(strstr(buffer, "keyboard") != NULL){
-						snprintf(buffer, 255, "/dev/input/%s", dirEntry->d_name);
-						retStruct->fd = open(buffer, O_RDONLY | O_NONBLOCK);
-					}
-					break;
-				case PLTK_POINTER:
-					break;
-		}
-	}
-
+	retStruct->fd = open(buffer, openFlags);
 	if(retStruct->fd == -1){
 		plMTFree(mt, retStruct);
 		return NULL;
 	}
 
+	retStruct->type = inputType;
 	retStruct->mt = mt;
 	return retStruct;
 }
@@ -298,7 +294,7 @@ void plTKInputClose(pltkinput_t* inputDevice){
 pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
 	pltklinuxevent_t rawEvent;
 	int success = read(inputDevice->fd, &rawEvent, sizeof(pltklinuxevent_t));
-	pltkevent_t retStruct {
+	pltkevent_t retStruct = {
 		.type = PLTK_ERROR,
 		.value = 0
 	};
@@ -307,7 +303,7 @@ pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
 		return retStruct;
 
 	retStruct.type = plTKEvdevEventTranslator(&rawEvent);
-	switch(inputDevice->type){
+	switch(retStruct.type){
 		case PLTK_KEYUP:
 		case PLTK_KEYDOWN:
 			retStruct.value = plTKEvdevKeyTranslator(&rawEvent);

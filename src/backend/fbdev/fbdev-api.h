@@ -1,4 +1,4 @@
-#include <pltk-core.h>
+#include "../../../include/pltk-core.h"
 #include <dirent.h>
 #include <sys/time.h>
 #include <math.h>
@@ -11,8 +11,6 @@ struct pltkwindow {
 	uint16_t position[2];
 	uint16_t dimensions[2];
 	uint8_t* windowBuffer;
-	bool inFocus;
-	bool disableWindowBar;
 	uint16_t windowId;
 	plmt_t* mt;
 };
@@ -25,8 +23,7 @@ typedef struct pltkfbinfo {
 
 void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop);
 void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop);
-
-void plTKFBInit();
-void plTKFBStop();
 bool plTKIsFBReady();
 pltkfbinfo_t plTKFBGetInfo();
+void plTKFBSetBackground(uint8_t color);
+uint16_t plTKFBGetNewWindowID();

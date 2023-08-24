@@ -1,12 +1,14 @@
-#include <pltk-backend.h>
+#include <pltk-core.h>
 #include <unistd.h>
 
 #include "pltk-test-font.pft"
 
 int main(){
-	plTKInit();
+	plTKInit(0);
 
-	pltkwindow_t* mainWindow = plTKCreateWindow(20, 20, 320, 240);
+	uint16_t positionHack[2] = {320, 240};
+	pltkwindow_t* mainWindow = plTKCreateWindow(320, 240, 320, 240);
+	plmt_t* inputMT = plMTInit(1024 * 1024);
 	pltkcolor_t lineColor;
 
 	lineColor.bytes[0] = 255;
@@ -42,8 +44,30 @@ int main(){
 
 
 	plTKWindowRender(mainWindow);
-	sleep(5);
 
+	pltkinput_t* mouse = plTKInputInit(PLTK_POINTER, "event17", false, inputMT);
+
+	bool endProg = false;
+	while(endProg == false){
+		pltkevent_t mouseinput = plTKGetInput(mouse);
+
+		if(mouseinput.value == PLTK_KEY_MIDDLECLICK)
+			endProg = true;
+
+		switch(mouseinput.type){
+			case PLTK_REL_X:
+				positionHack[0] += *((int*)&mouseinput.value);
+				break;
+			case PLTK_REL_Y:
+				positionHack[1] += *((int*)&mouseinput.value);
+				break;
+		}
+
+		if(mouseinput.type == PLTK_REL_X || mouseinput.type == PLTK_REL_Y)
+			plTKWindowMove(mainWindow, positionHack[0], positionHack[1]);
+	}
+
+	plTKInputClose(mouse);
 	plTKWindowClose(mainWindow);
 	plTKStop();
 }
