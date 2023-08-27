@@ -313,8 +313,8 @@ pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
 			break;
 	}
 
-	retStruct.time.tv_sec = rawEvent.tv_sec;
-	retStruct.time.tv_nsec = rawEven.tv_usec * 1000;
+	retStruct.time.tv_sec = rawEvent.time.tv_sec;
+	retStruct.time.tv_nsec = rawEvent.time.tv_usec * 1000;
 	return retStruct;
 }
 
