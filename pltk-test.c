@@ -45,7 +45,7 @@ int main(){
 
 	plTKWindowRender(mainWindow);
 
-	pltkinput_t* mouse = plTKInputInit(PLTK_POINTER, "event17", false, inputMT);
+	pltkinput_t* mouse = plTKInputInit(PLTK_POINTER, "event4", true, inputMT);
 
 	bool endProg = false;
 	while(endProg == false){
