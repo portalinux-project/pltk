@@ -1,6 +1,5 @@
 #include "../../../include/pltk-core.h"
 #include <math.h>
-#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>

@@ -1,5 +1,6 @@
 #include <pl32-memory.h>
 #include <pl32-file.h>
+#include <time.h>
 
 typedef struct pltkwindow pltkwindow_t;
 typedef struct pltkinput pltkinput_t;
@@ -148,6 +149,7 @@ typedef enum pltkkey {
 } pltkkey_t;
 
 typedef struct pltkevent {
+	struct timespec time;
 	pltkievent_t type;
 	unsigned int value;
 } pltkevent_t;
