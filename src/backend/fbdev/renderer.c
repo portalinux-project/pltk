@@ -1,14 +1,25 @@
 #include "fbdev-api.h"
 
 int fb = -2;
+byte_t* pfbmem = NULL;
 byte_t* fbmem = NULL;
+plmt_t* mt = NULL;
 pltkfbinfo_t fbinfo;
 
 bool fullscreenMode = false;
 uint8_t backgroundColor = 96;
 uint16_t windowAmnt = 0;
+struct termios originalMode;
+struct timespec renderDelay = {
+	.tv_sec = 0,
+	.tv_nsec = 0
+};
 
-void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop){
+void plTKFBUpdateBuffer(){
+	memcpy(pfbmem, fbmem, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
+}
+
+void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer){
 	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
 		plTKPanic("plTKFBWrite: Given data buffer is either empty or invalid", false, true);
 
@@ -53,15 +64,21 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 
 		startPtr += fbinfo.scanlineSize * fbinfo.bytesPerPixel;
 	}
+
+	if(refreshBuffer == true)
+		plTKFBUpdateBuffer();
+
+	if(renderDelay.tv_nsec != 0)
+		nanosleep(&renderDelay, NULL);
 }
 
-void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop){
+void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer){
 	pltkdata_t data;
 	data.dataPtr.array = &backgroundColor;
 	data.dataPtr.size = 1;
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
 
-	plTKFBWrite(&data, xStart, yStart, xStop, yStop);
+	plTKFBWrite(&data, xStart, yStart, xStop, yStop, refreshBuffer);
 }
 
 void plTKInit(uint8_t screen){
@@ -77,7 +94,7 @@ void plTKInit(uint8_t screen){
 	fputs("\x1b[2J\x1b[?25l", stdout);
 	fflush(stdout);
 
-	plmt_t* mt = plMTInit(0);
+	mt = plMTInit(0);
 
 	snprintf(stringBuf, 256, "/sys/class/graphics/fb%d/virtual_size", screen);
 	plfile_t* dispSize = plFOpen(stringBuf, "r", mt);
@@ -103,33 +120,60 @@ void plTKInit(uint8_t screen){
 	fbinfo.scanlineSize = strtol(stringBuf, &strtolBuf, 10) / fbinfo.bytesPerPixel;
 	plFClose(strideSize);
 
-	plMTStop(mt);
-
-	fbmem = mmap(NULL, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel, PROT_WRITE | PROT_READ, MAP_SHARED, fb, 0);
-	if(fbmem == MAP_FAILED)
+	pfbmem = mmap(NULL, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel, PROT_WRITE | PROT_READ, MAP_SHARED, fb, 0);
+	if(pfbmem == MAP_FAILED)
 		plTKPanic("plTKInit: Failed to map framebuffer to memory", false, true);
 
-	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1);
+	fbmem = plMTAllocE(mt, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
+	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);
+
+	tcgetattr(STDIN_FILENO, &originalMode);
+	struct termios currentMode;
+	currentMode.c_iflag &= ~(IGNBRK | BRKINT | ISTRIP);
+	currentMode.c_lflag &= ~(ICANON | ECHO | ISIG | ECHONL | IEXTEN);
+	currentMode.c_oflag &= ~OPOST;
+	currentMode.c_cflag &= ~(CSIZE | PARENB);
+	currentMode.c_cflag |= CS8;
+	currentMode.c_cc[VMIN] = 1;
+	currentMode.c_cc[VTIME] = 0;
+	tcsetattr(STDIN_FILENO, TCSANOW, &currentMode);
+	fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 }
 
 void plTKStop(){
-	if(fbmem == NULL)
+	if(pfbmem == NULL || fbmem == NULL)
 		plPanic("plTKStop: PLTK hasn't been initialized yet", false, true);
 
+	uint8_t buffer[4096];
 	backgroundColor = 0;
-	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1);
-	munmap(fbmem, fbinfo.displaySize[0] * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
+	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);
+
+	plMTStop(mt);
+	munmap(pfbmem, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
 	close(fb);
 
 	fb = -2;
+	pfbmem = NULL;
 	fbmem = NULL;
+
+	while(read(STDIN_FILENO, buffer, 4096) != -1);
+	tcsetattr(STDIN_FILENO, 0, &originalMode);
+	fcntl(STDIN_FILENO, F_SETFL, 0);
 
 	fputs("\x1b[2J\x1b[1;1H\x1b[?25h", stdout);
 	fflush(stdout);
 }
 
+void plTKSetRenderDelay(uint32_t microseconds){
+	while(microseconds > 1000000){
+		renderDelay.tv_sec++;
+		microseconds -= 1000000;
+	}
+	renderDelay.tv_nsec = microseconds * 1000;
+}
+
 bool plTKIsFBReady(){
-	if(fb < 0 || fbmem == NULL)
+	if(fb < 0 || pfbmem == NULL || fbmem == NULL)
 		return false;
 	return true;
 }

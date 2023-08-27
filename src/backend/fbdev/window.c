@@ -36,7 +36,7 @@ void plTKWindowClose(pltkwindow_t* window){
 	if(plTKIsFBReady() == false)
 		plPanic("plTKWindowClose: PLTK hasn't been initialized yet", false, true);
 
-	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
+	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1], true);
 
 	plmt_t* mt = window->mt;
 	plMTFree(mt, window->windowBuffer);
@@ -58,7 +58,7 @@ void plTKWindowRender(pltkwindow_t* window){
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
 	data.ignoreZero = false;
 
-	plTKFBWrite(&data, window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
+	plTKFBWrite(&data, window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1], true);
 }
 
 void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
@@ -68,10 +68,16 @@ void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
 	if(window == NULL)
 		plTKPanic("plTKWindowMove: Window handle was set as NULL", false, true);
 
-	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1]);
+	pltkfbinfo_t fbinfo = plTKFBGetInfo();
+	bool updateClear = false;
+	if(x > fbinfo.displaySize[0] || y > fbinfo.displaySize[1])
+		updateClear = true;
+
+	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1], updateClear);
 	window->position[0] = x;
 	window->position[1] = y;
-	plTKWindowRender(window);
+	if(!updateClear)
+		plTKWindowRender(window);
 }
 
 void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t color){

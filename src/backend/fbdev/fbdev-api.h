@@ -1,9 +1,11 @@
 #include "../../../include/pltk-core.h"
-#include <dirent.h>
-#include <sys/time.h>
 #include <math.h>
+#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <termios.h>
+#include <sys/time.h>
 #include <sys/mman.h>
 #include <linux/input-event-codes.h>
 
@@ -21,8 +23,8 @@ typedef struct pltkfbinfo {
 	uint8_t bytesPerPixel;
 } pltkfbinfo_t;
 
-void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop);
-void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop);
+void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer);
+void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer);
 bool plTKIsFBReady();
 pltkfbinfo_t plTKFBGetInfo();
 void plTKFBSetBackground(uint8_t color);

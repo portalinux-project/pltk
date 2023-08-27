@@ -156,6 +156,7 @@ void plTKPanic(string_t string, bool usePerror, bool devBug);
 
 void plTKInit(uint8_t screen);
 void plTKStop();
+void plTKSetRenderDelay(uint32_t microseconds);
 
 pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 void plTKWindowClose(pltkwindow_t* window);
