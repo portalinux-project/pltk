@@ -44,6 +44,17 @@ void plTKWindowClose(pltkwindow_t* window){
 	plMTStop(mt);
 }
 
+pltkwinfo_t plTKWindowGetInfo(pltkwindow_t* window){
+	pltkwinfo_t retStruct = {
+		.x = window->position[0],
+		.y = window->position[1],
+		.width = window->dimensions[0],
+		.height = window->dimensions[1]
+	};
+
+	return retStruct;
+}
+
 void plTKWindowRender(pltkwindow_t* window){
 	if(plTKIsFBReady() == false)
 		plPanic("plTKWindowRender: PLTK hasn't been initialized yet", false, true);

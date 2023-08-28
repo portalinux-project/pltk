@@ -2,6 +2,7 @@
 
 struct pltkinput {
 	pltkitype_t type;
+	bool nonblock;
 	int fd;
 	plmt_t* mt;
 };
@@ -264,14 +265,16 @@ pltkkey_t plTKEvdevKeyTranslator(pltklinuxevent_t* rawEvent){
 }
 
 pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool nonblock, plmt_t* mt){
+	if(specificDevice == NULL || mt == NULL)
+		plTKPanic("plTKInputInit: NULL pointers were given!", false, true);
+
 	pltkinput_t* retStruct = plMTAllocE(mt, sizeof(pltkinput_t));
 	char buffer[255] = "";
 	int openFlags = O_RDONLY;
 	retStruct->fd = -1;
+	retStruct->nonblock = nonblock;
 
-	if(specificDevice != NULL)
-		snprintf(buffer, 255, "/dev/input/%s", specificDevice);
-
+	snprintf(buffer, 255, "/dev/input/%s", specificDevice);
 	if(nonblock == true)
 		openFlags = O_RDONLY | O_NONBLOCK;
 
@@ -283,10 +286,15 @@ pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool non
 
 	retStruct->type = inputType;
 	retStruct->mt = mt;
+
 	return retStruct;
 }
 
 void plTKInputClose(pltkinput_t* inputDevice){
+	pltklinuxevent_t junk;
+	if(inputDevice->nonblock)
+		while(read(inputDevice->fd, &junk, sizeof(pltklinuxevent_t)) != -1);
+
 	close(inputDevice->fd);
 	plMTFree(inputDevice->mt, inputDevice);
 }
@@ -317,4 +325,3 @@ pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
 	retStruct.time.tv_nsec = rawEvent.time.tv_usec * 1000;
 	return retStruct;
 }
-

@@ -2,9 +2,9 @@
 #include <pl32-file.h>
 #include <time.h>
 
-typedef struct pltkwindow pltkwindow_t;
-typedef struct pltkinput pltkinput_t;
 typedef plchar_t pltkcolor_t;
+typedef struct pltkinput pltkinput_t;
+typedef struct pltkwindow pltkwindow_t;
 
 typedef struct pltkdata {
 	plfatptr_t dataPtr;
@@ -154,6 +154,13 @@ typedef struct pltkevent {
 	unsigned int value;
 } pltkevent_t;
 
+typedef struct pltkwinfo {
+	uint16_t x;
+	uint16_t y;
+	uint16_t width;
+	uint16_t height;
+} pltkwinfo_t;
+
 void plTKPanic(string_t string, bool usePerror, bool devBug);
 
 void plTKInit(uint8_t screen);
@@ -163,6 +170,7 @@ void plTKSetRenderDelay(uint32_t microseconds);
 pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
 void plTKWindowClose(pltkwindow_t* window);
 
+pltkwinfo_t plTKWindowGetInfo(pltkwindow_t* window);
 void plTKWindowRender(pltkwindow_t* window);
 void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y);
 void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t color);
