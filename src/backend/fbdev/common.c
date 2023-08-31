@@ -7,6 +7,8 @@ void plTKPanic(string_t string, bool usePerror, bool devBug){
 		plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);
 	}
 
+	tcsetattr(STDIN_FILENO, TCSANOW, &fbinfo.termMode);
+	fcntl(STDIN_FILENO, F_SETFL, 0);
 	fputs("\x1b[2J\x1b[?25h", stdout);
 	fflush(stdout);
 

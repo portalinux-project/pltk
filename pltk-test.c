@@ -1,5 +1,4 @@
 #include <pltk-core.h>
-#include <unistd.h>
 
 #include "pltk-test-font.pft"
 
@@ -42,16 +41,17 @@ int main(){
 	plTKWindowRenderFont(mainWindow, 63, 0, font, 83, lineColor);
 	plTKWindowRenderFont(mainWindow, 72, 0, font, 84, lineColor);
 
-
 	plTKWindowRender(mainWindow);
 
-	pltkinput_t* mouse = plTKInputInit(PLTK_POINTER, "event4", true, inputMT);
+	pltkinput_t* keyboard = plTKInputInit("event5", true, inputMT);
+	pltkinput_t* mouse = plTKInputInit("event4", true, inputMT);
 
 	bool endProg = false;
 	while(endProg == false){
+		pltkevent_t keyboardinput = plTKGetInput(keyboard);
 		pltkevent_t mouseinput = plTKGetInput(mouse);
 
-		if(mouseinput.value == PLTK_KEY_MIDDLECLICK)
+		if(keyboardinput.value == PLTK_KEY_SPACE)
 			endProg = true;
 
 		switch(mouseinput.type){
@@ -61,6 +61,7 @@ int main(){
 			case PLTK_REL_Y:
 				positionHack[1] += *((int*)&mouseinput.value);
 				break;
+			default:;
 		}
 
 		if(mouseinput.type == PLTK_REL_X || mouseinput.type == PLTK_REL_Y)

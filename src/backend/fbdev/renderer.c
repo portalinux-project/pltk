@@ -9,7 +9,6 @@ pltkfbinfo_t fbinfo;
 bool fullscreenMode = false;
 uint8_t backgroundColor = 96;
 uint16_t windowAmnt = 0;
-struct termios originalMode;
 struct timespec renderDelay = {
 	.tv_sec = 0,
 	.tv_nsec = 0
@@ -51,7 +50,9 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 	for(int i = 0; i < drawDim[1]; i++){
 		for(int j = 0; j < drawDim[0]; j++){
 			for(int k = 0; k < fbinfo.bytesPerPixel; k++){
-				startPtr[j * fbinfo.bytesPerPixel + k] = *dataByte;
+				if(*dataByte != 0 || data->ignoreZero == false)
+					startPtr[j * fbinfo.bytesPerPixel + k] = *dataByte;
+
 				if(dataByte < (uint8_t*)data->dataPtr.array + data->dataPtr.size - 1)
 					dataByte++;
 				else
@@ -77,6 +78,7 @@ void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t ySto
 	data.dataPtr.array = &backgroundColor;
 	data.dataPtr.size = 1;
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
+	data.ignoreZero = false;
 
 	plTKFBWrite(&data, xStart, yStart, xStop, yStop, refreshBuffer);
 }
@@ -127,7 +129,7 @@ void plTKInit(uint8_t screen){
 	fbmem = plMTAllocE(mt, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
 	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);
 
-	tcgetattr(STDIN_FILENO, &originalMode);
+	tcgetattr(STDIN_FILENO, &fbinfo.termMode);
 	struct termios currentMode;
 	currentMode.c_iflag &= ~(IGNBRK | BRKINT | ISTRIP);
 	currentMode.c_lflag &= ~(ICANON | ECHO | ISIG | ECHONL | IEXTEN);
@@ -157,7 +159,7 @@ void plTKStop(){
 	fbmem = NULL;
 
 	while(read(STDIN_FILENO, buffer, 4096) != -1);
-	tcsetattr(STDIN_FILENO, 0, &originalMode);
+	tcsetattr(STDIN_FILENO, 0, &fbinfo.termMode);
 	fcntl(STDIN_FILENO, F_SETFL, 0);
 
 	fputs("\x1b[2J\x1b[1;1H\x1b[?25h", stdout);

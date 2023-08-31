@@ -1,7 +1,6 @@
 #include "fbdev-api.h"
 
 struct pltkinput {
-	pltkitype_t type;
 	bool nonblock;
 	int fd;
 	plmt_t* mt;
@@ -21,8 +20,10 @@ pltkievent_t plTKEvdevEventTranslator(pltklinuxevent_t* rawEvent){
 		case EV_KEY:
 			if(rawEvent->value == 0)
 				return PLTK_KEYUP;
-			else
+			else if(rawEvent->value == 1)
 				return PLTK_KEYDOWN;
+			else
+				return PLTK_KEYHOLD;
 			break;
 		case EV_REL:
 			switch(rawEvent->code){
@@ -264,7 +265,7 @@ pltkkey_t plTKEvdevKeyTranslator(pltklinuxevent_t* rawEvent){
 	}
 }
 
-pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool nonblock, plmt_t* mt){
+pltkinput_t* plTKInputInit(char* specificDevice, bool nonblock, plmt_t* mt){
 	if(specificDevice == NULL || mt == NULL)
 		plTKPanic("plTKInputInit: NULL pointers were given!", false, true);
 
@@ -284,9 +285,7 @@ pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool non
 		return NULL;
 	}
 
-	retStruct->type = inputType;
 	retStruct->mt = mt;
-
 	return retStruct;
 }
 
@@ -299,7 +298,14 @@ void plTKInputClose(pltkinput_t* inputDevice){
 	plMTFree(inputDevice->mt, inputDevice);
 }
 
+int plTKInputGetRawHandle(pltkinput_t* inputDevice){
+	return inputDevice->fd;
+}
+
 pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
+	if(inputDevice == NULL)
+		plTKPanic("plTKGetInput: NULL pointers were given!", false, true);
+
 	pltklinuxevent_t rawEvent;
 	int success = read(inputDevice->fd, &rawEvent, sizeof(pltklinuxevent_t));
 	pltkevent_t retStruct = {

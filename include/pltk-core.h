@@ -1,3 +1,4 @@
+#pragma once
 #include <pl32-memory.h>
 #include <pl32-file.h>
 #include <time.h>
@@ -18,17 +19,11 @@ typedef struct pltkfont {
 	bool utf8Support;
 } pltkfont_t;
 
-typedef enum pltkitype {
-	PLTK_NONE,
-	PLTK_KEYBOARD,
-	PLTK_POINTER,
-	PLTK_CUSTOM
-} pltkitype_t;
-
 typedef enum pltkievent {
 	PLTK_ERROR,
 	PLTK_SYNC,
 	PLTK_KEYDOWN,
+	PLTK_KEYHOLD,
 	PLTK_KEYUP,
 	PLTK_REL_X,
 	PLTK_REL_Y,
@@ -178,6 +173,7 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkdata_t* data);
 void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, uint32_t index, pltkcolor_t color);
 
-pltkinput_t* plTKInputInit(pltkitype_t inputType, char* specificDevice, bool nonblock, plmt_t* mt);
+pltkinput_t* plTKInputInit(char* specificDevice, bool nonblock, plmt_t* mt);
 void plTKInputClose(pltkinput_t* inputDevice);
+int plTKInputGetRawHandle(pltkinput_t* inputDevice);
 pltkevent_t plTKGetInput(pltkinput_t* inputDevice);

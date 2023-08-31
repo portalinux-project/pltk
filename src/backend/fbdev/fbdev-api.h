@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <linux/input.h>
 #include <linux/input-event-codes.h>
 
 struct pltkwindow {
@@ -20,6 +21,7 @@ typedef struct pltkfbinfo {
 	uint16_t displaySize[2];
 	uint16_t scanlineSize;
 	uint8_t bytesPerPixel;
+	struct termios termMode;
 } pltkfbinfo_t;
 
 void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer);
