@@ -58,6 +58,9 @@ void plTKBasicDrawScreenFragment(){
 	if(pointerPos[1] + 24 > window->position[1] + window->dimensions[1])
 		stopPos[1] = window->dimensions[1];
 
+	if((stopPos[0] - startPos[0]) < 24 || (stopPos[1] - startPos[1]) < 24)
+		plTKFBClear(pointerPos[0], pointerPos[1], pointerPos[0] + 24, pointerPos[1] + 24, false);
+
 	data.dataPtr.array = dataBuf;
 	data.dataPtr.size = (stopPos[0] - startPos[0]) * (stopPos[1] - startPos[1]) * fbinfo.bytesPerPixel;
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
@@ -172,11 +175,12 @@ void plTKBasicUpdate(bool updateWindow){
 	if(pointerInput.type == PLTK_ABS_X || pointerInput.type == PLTK_ABS_Y || pointerInput.type == PLTK_REL_X || pointerInput.type == PLTK_REL_Y)
 		updatePointerLocation = true;
 
-	if(drawCursor && updatePointerLocation)
-		plTKFBClear(pointerPos[0], pointerPos[1], pointerPos[0] + 24, pointerPos[1] + 24, false);
-
-	if(((pointerPos[0] + 24 > windowInfo.x && pointerPos[0] < windowInfo.x + windowInfo.width) && (pointerPos[1] + 24 > windowInfo.y && pointerPos[1] < windowInfo.y + windowInfo.height)) && updatePointerLocation)
-		plTKBasicDrawScreenFragment();
+	if(updatePointerLocation && drawCursor){
+		if((pointerPos[0] + 24 > windowInfo.x && pointerPos[0] < windowInfo.x + windowInfo.width) && (pointerPos[1] + 24 > windowInfo.y && pointerPos[1] < windowInfo.y + windowInfo.height))
+			plTKBasicDrawScreenFragment();
+		else
+			plTKFBClear(pointerPos[0], pointerPos[1], pointerPos[0] + 24, pointerPos[1] + 24, false);
+	}
 
 	switch(pointerInput.type){
 		case PLTK_ABS_X:
