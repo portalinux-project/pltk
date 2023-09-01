@@ -43,9 +43,11 @@ int main(){
 	while(!endProg){
 		pltkbasicptr_t mouseInput = plTKBasicGetPtrState();
 		pltkbasickb_t keyboardInput = plTKBasicGetKBInput();
-		if((keyboard.type == PLTK_KEYDOWN || keyboard.type == PLTK_KEYHOLD) && keyboardInput.value == PLTK_KEY_SPACE)
+		if((keyboardInput.type == PLTK_KEYDOWN && keyboardInput.value == PLTK_KEY_SPACE) || mouseInput.buttonPressed == PLTK_KEY_LEFTCLICK)
 			endProg = true;
 
 		plTKBasicUpdate(false);
 	}
+
+	plTKBasicStop();
 }

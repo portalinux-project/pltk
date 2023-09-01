@@ -1,4 +1,4 @@
-#include "fbdev-api.h"
+#include "../framebuffer-api.h"
 
 int fb = -2;
 byte_t* pfbmem = NULL;
@@ -146,7 +146,6 @@ void plTKStop(){
 	if(pfbmem == NULL || fbmem == NULL)
 		plPanic("plTKStop: PLTK hasn't been initialized yet", false, true);
 
-	uint8_t buffer[4096];
 	backgroundColor = 0;
 	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);
 
@@ -158,9 +157,11 @@ void plTKStop(){
 	pfbmem = NULL;
 	fbmem = NULL;
 
+	uint8_t buffer[4096];
 	while(read(STDIN_FILENO, buffer, 4096) != -1);
-	tcsetattr(STDIN_FILENO, 0, &fbinfo.termMode);
+
 	fcntl(STDIN_FILENO, F_SETFL, 0);
+	tcsetattr(STDIN_FILENO, 0, &fbinfo.termMode);
 
 	fputs("\x1b[2J\x1b[1;1H\x1b[?25h", stdout);
 	fflush(stdout);

@@ -1,4 +1,4 @@
-#include "fbdev-api.h"
+#include "../framebuffer-api.h"
 
 void plTKPanic(string_t string, bool usePerror, bool devBug){
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();

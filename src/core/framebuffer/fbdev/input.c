@@ -1,4 +1,4 @@
-#include "fbdev-api.h"
+#include "../framebuffer-api.h"
 
 struct pltkinput {
 	bool nonblock;
@@ -319,6 +319,7 @@ pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
 	retStruct.type = plTKEvdevEventTranslator(&rawEvent);
 	switch(retStruct.type){
 		case PLTK_KEYUP:
+		case PLTK_KEYHOLD:
 		case PLTK_KEYDOWN:
 			retStruct.value = plTKEvdevKeyTranslator(&rawEvent);
 			break;

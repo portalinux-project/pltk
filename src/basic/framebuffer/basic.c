@@ -1,4 +1,4 @@
-#include "fbdev-api.h"
+#include "../../core/framebuffer/framebuffer-api.h"
 #include "cursor.c"
 #include "../../../include/pltk-basic.h"
 
@@ -82,25 +82,25 @@ char* plTKBasicGetInputName(pltkitype_t devType){
 	long evBitfield[EV_MAX / bitsPerLong];
 	memset(evBitfield, 0, sizeof(evBitfield));
 
-	static char retPath[32];
+	static char retName[32];
 	while((dirEntry = readdir(eventDirectory)) != NULL){
 		int deviceFeatures = 0;
 
-		memset(retPath, 0, 32);
-		snprintf(retPath, 32, "/dev/input/%s", dirEntry->d_name);
-		int fd = open(retPath, O_RDONLY);
+		memset(retName, 0, 32);
+		snprintf(retName, 32, "/dev/input/%s", dirEntry->d_name);
+		int fd = open(retName, O_RDONLY);
 		ioctl(fd, EVIOCGBIT(0, EV_MAX), evBitfield);
 
 		for(int evType = 0; evType < EV_MAX; evType++){
-			if(evBitfield[evType / bitsPerLong] & 1 << evType / bitsPerLong){
+			if(evBitfield[evType / bitsPerLong] & (1 << (evType % bitsPerLong))){
 				switch(devType){
 					case PLTK_KEYBOARD:
 						if(evType == EV_KEY || evType == EV_REP)
 							deviceFeatures++;
 
 						if(deviceFeatures == 2){
-							snprintf(retPath, 32, "%s", dirEntry->d_name);
-							return retPath;
+							snprintf(retName, 32, "%s", dirEntry->d_name);
+							return retName;
 						}
 						break;
 					case PLTK_POINTER_REL:
@@ -108,8 +108,8 @@ char* plTKBasicGetInputName(pltkitype_t devType){
 							deviceFeatures++;
 
 						if(deviceFeatures){
-							snprintf(retPath, 32, "%s", dirEntry->d_name);
-							return retPath;
+							snprintf(retName, 32, "%s", dirEntry->d_name);
+							return retName;
 						}
 						break;
 					case PLTK_POINTER_ABS:
@@ -117,14 +117,15 @@ char* plTKBasicGetInputName(pltkitype_t devType){
 							deviceFeatures++;
 
 						if(deviceFeatures){
-							snprintf(retPath, 32, "%s", dirEntry->d_name);
-							return retPath;
+							snprintf(retName, 32, "%s", dirEntry->d_name);
+							return retName;
 						}
 						break;
 					default:;
 				}
 			}
 		}
+		close(fd);
 	}
 
 	plTKPanic("plTKBasicGetInputPath: Cannot find device", false, false);
@@ -133,9 +134,9 @@ char* plTKBasicGetInputName(pltkitype_t devType){
 
 void plTKBasicInit(pltkitype_t ptrType, uint16_t width, uint16_t height, bool disableCursorDraw){
 	plTKInit(0);
+	window = plTKCreateWindow((fbinfo.displaySize[0] / 2) - (width / 2), (fbinfo.displaySize[1] / 2) - (height / 2), width, height);
 
 	fbinfo = plTKFBGetInfo();
-	window = plTKCreateWindow((fbinfo.displaySize[0] / 2) - (width / 2), (fbinfo.displaySize[1] / 2) - (height / 2), width, height);
 	inputMT = plMTInit(1024 * 1024);
 	kb = plTKInputInit(plTKBasicGetInputName(PLTK_KEYBOARD), true, inputMT);
 	ptr = plTKInputInit(plTKBasicGetInputName(ptrType), true, inputMT);
@@ -156,9 +157,9 @@ void plTKBasicInit(pltkitype_t ptrType, uint16_t width, uint16_t height, bool di
 }
 
 void plTKBasicStop(){
-	plTKWindowClose(window);
 	plTKInputClose(kb);
 	plTKInputClose(ptr);
+	plTKWindowClose(window);
 	plMTStop(inputMT);
 	plTKStop();
 }
@@ -195,12 +196,12 @@ void plTKBasicUpdate(bool updateWindow){
 			pointerLastInputTime = pointerInput.time;
 			break;
 		case PLTK_KEYDOWN:
-		case PLTK_KEYHOLD:
-			pointerButton = pointerInput.type;
+			pointerButton = pointerInput.value;
 			break;
-		default:
-			if(pointerInput.type != PLTK_SYNC)
-				pointerButton = PLTK_KEY_ERROR;
+		case PLTK_KEYUP:
+			pointerButton = PLTK_KEY_ERROR;
+			break;
+		default: ;
 	}
 
 	if(updateWindow)

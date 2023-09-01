@@ -51,7 +51,7 @@ int main(){
 		pltkevent_t keyboardinput = plTKGetInput(keyboard);
 		pltkevent_t mouseinput = plTKGetInput(mouse);
 
-		if(keyboardinput.value == PLTK_KEY_SPACE)
+		if(keyboardinput.value == PLTK_KEY_SPACE || (mouseinput.type == PLTK_KEYDOWN && mouseinput.value == PLTK_KEY_LEFTCLICK))
 			endProg = true;
 
 		switch(mouseinput.type){
@@ -69,6 +69,7 @@ int main(){
 	}
 
 	plTKInputClose(mouse);
+	plTKInputClose(keyboard);
 	plTKWindowClose(mainWindow);
 	plTKStop();
 }
