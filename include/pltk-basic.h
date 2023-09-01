@@ -17,10 +17,13 @@ typedef struct pltkbasicptr {
 
 typedef pltkevent_t pltkbasickb_t;
 
+bool plTKBasicPointerHoversOverWindow();
+
 void plTKBasicInit(pltkitype_t pointerType, uint16_t width, uint16_t height, bool disableCursorDraw);
 void plTKBasicStop();
 void plTKBasicUpdate(bool updateWindow);
 
+pltkwinfo_t plTKBasicWindowGetInfo();
 void plTKBasicWindowMove(uint16_t x, uint16_t y);
 void plTKBasicWindowPixel(uint16_t x, uint16_t y, pltkcolor_t color);
 void plTKBasicWindowLine(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkcolor_t color);

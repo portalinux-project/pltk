@@ -77,6 +77,13 @@ void plTKBasicDrawScreenFragment(){
 	plTKFBWrite(&data, window->position[0] + startPos[0], window->position[1] + startPos[1], window->position[0] + stopPos[0], window->position[1] + stopPos[1], false);
 }
 
+bool plTKBasicPointerHoversOverWindow(){
+	pltkwinfo_t windowInfo = plTKWindowGetInfo(window);
+	if((pointerPos[0] + 24 > windowInfo.x && pointerPos[0] < windowInfo.x + windowInfo.width) && (pointerPos[1] + 24 > windowInfo.y && pointerPos[1] < windowInfo.y + windowInfo.height))
+		return true;
+	return false;
+}
+
 char* plTKBasicGetInputName(pltkitype_t devType){
 	DIR* eventDirectory = opendir("/dev/input");
 	struct dirent* dirEntry;
@@ -169,14 +176,13 @@ void plTKBasicStop(){
 
 void plTKBasicUpdate(bool updateWindow){
 	pltkevent_t pointerInput = plTKGetInput(ptr);
-	pltkwinfo_t windowInfo = plTKWindowGetInfo(window);
 
 	bool updatePointerLocation = false;
 	if(pointerInput.type == PLTK_ABS_X || pointerInput.type == PLTK_ABS_Y || pointerInput.type == PLTK_REL_X || pointerInput.type == PLTK_REL_Y)
 		updatePointerLocation = true;
 
 	if(updatePointerLocation && drawCursor){
-		if((pointerPos[0] + 24 > windowInfo.x && pointerPos[0] < windowInfo.x + windowInfo.width) && (pointerPos[1] + 24 > windowInfo.y && pointerPos[1] < windowInfo.y + windowInfo.height))
+		if(plTKBasicPointerHoversOverWindow())
 			plTKBasicDrawScreenFragment();
 		else
 			plTKFBClear(pointerPos[0], pointerPos[1], pointerPos[0] + 24, pointerPos[1] + 24, false);
@@ -215,6 +221,10 @@ void plTKBasicUpdate(bool updateWindow){
 		plTKFBWrite(&cursorData, pointerPos[0], pointerPos[1], pointerPos[0] + 24, pointerPos[1] + 24, true);
 
 	return;
+}
+
+pltkwinfo_t plTKBasicWindowGetInfo(){
+	return plTKWindowGetInfo(window);
 }
 
 void plTKBasicWindowMove(uint16_t x, uint16_t y){

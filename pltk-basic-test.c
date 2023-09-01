@@ -1,5 +1,4 @@
 #include <pltk-basic.h>
-
 #include "pltk-test-font.pft"
 
 int main(){
@@ -37,13 +36,40 @@ int main(){
 	plTKBasicWindowRenderFont(54, 0, font, 69, lineColor);
 	plTKBasicWindowRenderFont(63, 0, font, 83, lineColor);
 	plTKBasicWindowRenderFont(72, 0, font, 84, lineColor);
-
 	plTKBasicUpdate(true);
+
 	bool endProg = false;
+	pltkbasicptr_t mouseInputBuf = {
+		.time = {
+			.tv_sec = 0,
+			.tv_nsec = 0
+		},
+		.buttonPressed = PLTK_KEY_ERROR,
+		.x = 0,
+		.y = 0
+	};
 	while(!endProg){
 		pltkbasicptr_t mouseInput = plTKBasicGetPtrState();
 		pltkbasickb_t keyboardInput = plTKBasicGetKBInput();
-		if((keyboardInput.type == PLTK_KEYDOWN && keyboardInput.value == PLTK_KEY_SPACE) || mouseInput.buttonPressed == PLTK_KEY_LEFTCLICK)
+
+		if(mouseInput.buttonPressed == PLTK_KEY_LEFTCLICK && mouseInputBuf.buttonPressed == PLTK_KEY_ERROR && plTKBasicPointerHoversOverWindow()){
+			mouseInputBuf = mouseInput;
+		}else if(mouseInput.buttonPressed == PLTK_KEY_ERROR && mouseInputBuf.buttonPressed != mouseInput.buttonPressed){
+			pltkwinfo_t windowInfo = plTKBasicWindowGetInfo();
+			int relX = (int)mouseInput.x - (int)mouseInputBuf.x;
+			int relY = (int)mouseInput.y - (int)mouseInputBuf.y;
+
+			while((int)windowInfo.x + relX < 0)
+				relX++;
+
+			while((int)windowInfo.y + relY < 0)
+				relY++;
+
+			plTKBasicWindowMove(windowInfo.x + relX, windowInfo.y + relY);
+			mouseInputBuf.buttonPressed = PLTK_KEY_ERROR;
+		}
+
+		if(keyboardInput.type == PLTK_KEYDOWN && keyboardInput.value == PLTK_KEY_SPACE)
 			endProg = true;
 
 		plTKBasicUpdate(false);
