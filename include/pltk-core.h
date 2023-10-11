@@ -1,6 +1,6 @@
 #pragma once
-#include <pl32-memory.h>
-#include <pl32-file.h>
+#include <plrt-memory.h>
+#include <plrt-file.h>
 #include <time.h>
 
 typedef plchar_t pltkcolor_t;
@@ -8,7 +8,8 @@ typedef struct pltkinput pltkinput_t;
 typedef struct pltkwindow pltkwindow_t;
 
 typedef struct pltkdata {
-	plfatptr_t dataPtr;
+	plptr_t dataPtr;
+	plmt_t* mt;
 	uint8_t bytesPerPixel;
 	bool ignoreZero;
 } pltkdata_t;
@@ -156,7 +157,14 @@ typedef struct pltkwinfo {
 	uint16_t height;
 } pltkwinfo_t;
 
-void plTKPanic(string_t string, bool usePerror, bool devBug);
+typedef enum pltkerror {
+	PLTK_NOT_INITIALIZED = 1,
+	PLTK_FB_FAILED = 2,
+	PLTK_FB_MISMATCHED_BITDEPTH = 3,
+	PLTK_INVALID_BUFFER = 4,
+} pltkerror_t;
+
+void plTKPanic(char* string, unsigned long errCode, bool isDeveloperBug);
 
 void plTKInit(uint8_t screen);
 void plTKStop();

@@ -267,9 +267,9 @@ pltkkey_t plTKEvdevKeyTranslator(pltklinuxevent_t* rawEvent){
 
 pltkinput_t* plTKInputInit(char* specificDevice, bool nonblock, plmt_t* mt){
 	if(specificDevice == NULL || mt == NULL)
-		plTKPanic("plTKInputInit: NULL pointers were given!", false, true);
+		plTKPanic("plTKInputInit", PLRT_ERROR | PLRT_NULL_PTR, true);
 
-	pltkinput_t* retStruct = plMTAllocE(mt, sizeof(pltkinput_t));
+	pltkinput_t* retStruct = plMTAlloc(mt, sizeof(pltkinput_t));
 	char buffer[255] = "";
 	int openFlags = O_RDONLY;
 	retStruct->fd = -1;
@@ -304,7 +304,7 @@ int plTKInputGetRawHandle(pltkinput_t* inputDevice){
 
 pltkevent_t plTKGetInput(pltkinput_t* inputDevice){
 	if(inputDevice == NULL)
-		plTKPanic("plTKGetInput: NULL pointers were given!", false, true);
+		plTKPanic("plTKGetInput", PLRT_ERROR | PLRT_NULL_PTR, true);
 
 	pltklinuxevent_t rawEvent;
 	int success = read(inputDevice->fd, &rawEvent, sizeof(pltklinuxevent_t));

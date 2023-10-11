@@ -14,10 +14,10 @@ struct timespec pointerLastInputTime;
 unsigned int pointerButton = PLTK_KEY_ERROR;
 uint16_t pointerPos[2] = { 0, 0 };
 
-plfatptr_t plTKBasicGenerateCursorGraphic(char* data){
-	plfatptr_t retStruct;
+plptr_t plTKBasicGenerateCursorGraphic(char* data){
+	plptr_t retStruct;
 
-	retStruct.array = plMTAllocE(inputMT, 24 * 24 * fbinfo.bytesPerPixel);
+	retStruct.pointer = plMTAlloc(inputMT, 24 * 24 * fbinfo.bytesPerPixel);
 	retStruct.size = 24 * 24 * fbinfo.bytesPerPixel;
 
 	for(int i = 0; i < 576; i++){
@@ -27,10 +27,9 @@ plfatptr_t plTKBasicGenerateCursorGraphic(char* data){
 		else if(data[i] == 2)
 			color = 255;
 
-		((uint8_t*)retStruct.array)[i * 4] = color;
-		((uint8_t*)retStruct.array)[i * 4 + 1] = color;
-		((uint8_t*)retStruct.array)[i * 4 + 2] = color;
-		((uint8_t*)retStruct.array)[i * 4 + 3] = 0;
+		for(int j = 0; j < fbinfo.bytesPerPixel - 1; j++)
+			((uint8_t*)retStruct.pointer)[i * 4 + j] = color;
+		((uint8_t*)retStruct.pointer)[i * 4 + (fbinfo.bytesPerPixel - 1)] = 0;
 	}
 
 	return retStruct;
@@ -61,13 +60,13 @@ void plTKBasicDrawScreenFragment(){
 	if((stopPos[0] - startPos[0]) < 24 || (stopPos[1] - startPos[1]) < 24)
 		plTKFBClear(pointerPos[0], pointerPos[1], pointerPos[0] + 24, pointerPos[1] + 24, false);
 
-	data.dataPtr.array = dataBuf;
+	data.dataPtr.pointer = dataBuf;
 	data.dataPtr.size = (stopPos[0] - startPos[0]) * (stopPos[1] - startPos[1]) * fbinfo.bytesPerPixel;
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
 	data.ignoreZero = false;
 
 	uint8_t* startData = window->windowBuffer + (startPos[0] * fbinfo.bytesPerPixel) + (window->dimensions[0] * startPos[1] * fbinfo.bytesPerPixel);
-	uint8_t* dataArray = data.dataPtr.array;
+	uint8_t* dataArray = data.dataPtr.pointer;
 	for(int i = 0; i < stopPos[1] - startPos[1]; i++){
 		memcpy(dataArray, startData, (stopPos[0] - startPos[0]) * fbinfo.bytesPerPixel);
 		startData += window->dimensions[0] * fbinfo.bytesPerPixel;

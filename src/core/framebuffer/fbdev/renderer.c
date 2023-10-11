@@ -19,11 +19,11 @@ void plTKFBUpdateBuffer(){
 }
 
 void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer){
-	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
-		plTKPanic("plTKFBWrite: Given data buffer is either empty or invalid", false, true);
+	if(data == NULL || data->dataPtr.pointer == NULL || data->dataPtr.size == 0)
+		plTKPanic("plTKFBWrite", PLTK_INVALID_BUFFER, true);
 
 	if(data->bytesPerPixel != fbinfo.bytesPerPixel)
-		plTKPanic("plTKFBWrite: Mismached bitness between data buffer and framebuffer", false, true);
+		plTKPanic("plTKFBWrite", PLTK_FB_MISMATCHED_BITDEPTH, true);
 
 	if(xStop < xStart || yStop < yStart)
 		return;
@@ -46,17 +46,17 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 		drawDim[1] += yOverdraw;
 	}
 
-	uint8_t* dataByte = data->dataPtr.array;
+	uint8_t* dataByte = data->dataPtr.pointer;
 	for(int i = 0; i < drawDim[1]; i++){
 		for(int j = 0; j < drawDim[0]; j++){
 			for(int k = 0; k < fbinfo.bytesPerPixel; k++){
 				if(*dataByte != 0 || data->ignoreZero == false)
 					startPtr[j * fbinfo.bytesPerPixel + k] = *dataByte;
 
-				if(dataByte < (uint8_t*)data->dataPtr.array + data->dataPtr.size - 1)
+				if(dataByte < (uint8_t*)data->dataPtr.pointer + data->dataPtr.size - 1)
 					dataByte++;
 				else
-					dataByte = data->dataPtr.array;
+					dataByte = data->dataPtr.pointer;
 			}
 		}
 
@@ -75,7 +75,7 @@ void plTKFBWrite(pltkdata_t* data, uint16_t xStart, uint16_t yStart, uint16_t xS
 
 void plTKFBClear(uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, bool refreshBuffer){
 	pltkdata_t data;
-	data.dataPtr.array = &backgroundColor;
+	data.dataPtr.pointer = &backgroundColor;
 	data.dataPtr.size = 1;
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
 	data.ignoreZero = false;
@@ -91,7 +91,7 @@ void plTKInit(uint8_t screen){
 	snprintf(stringBuf, 256, "/dev/fb%d", screen);
 	fb = open(stringBuf, O_RDWR);
 	if(fb == -1)
-		plTKPanic("plTKInit", true, false);
+		plTKPanic("plTKInit", PLRT_ERROR | PLRT_ERRNO, false);
 
 	fputs("\x1b[2J\x1b[?25l", stdout);
 	fflush(stdout);
@@ -107,26 +107,35 @@ void plTKInit(uint8_t screen){
 	char* convertBuf;
 	char* strtolBuf;
 
-	plFGets(stringBuf, 256, dispSize);
+	plstring_t plStringBuf = {
+		.data = {
+			.pointer = stringBuf,
+			.size = 256
+		},
+		.mt = NULL,
+		.isplChar = false
+	};
+
+	plFGets(&plStringBuf, dispSize);
 	convertBuf = strtok(stringBuf, ",\n");
 	fbinfo.displaySize[0] = strtol(convertBuf, &strtolBuf, 10);
 	convertBuf = strtok(NULL, ",\n");
 	fbinfo.displaySize[1] = strtol(convertBuf, &strtolBuf, 10);
 	plFClose(dispSize);
 
-	plFGets(stringBuf, 256, bitsPerPixel);
+	plFGets(&plStringBuf, bitsPerPixel);
 	fbinfo.bytesPerPixel = strtol(stringBuf, &strtolBuf, 10) / 8;
 	plFClose(bitsPerPixel);
 
-	plFGets(stringBuf, 256, strideSize);
+	plFGets(&plStringBuf, strideSize);
 	fbinfo.scanlineSize = strtol(stringBuf, &strtolBuf, 10) / fbinfo.bytesPerPixel;
 	plFClose(strideSize);
 
 	pfbmem = mmap(NULL, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel, PROT_WRITE | PROT_READ, MAP_SHARED, fb, 0);
 	if(pfbmem == MAP_FAILED)
-		plTKPanic("plTKInit: Failed to map framebuffer to memory", false, true);
+		plTKPanic("plTKInit", PLTK_FB_FAILED, true);
 
-	fbmem = plMTAllocE(mt, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
+	fbmem = plMTAlloc(mt, fbinfo.scanlineSize * fbinfo.displaySize[1] * fbinfo.bytesPerPixel);
 	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);
 
 	tcgetattr(STDIN_FILENO, &fbinfo.termMode);
@@ -144,7 +153,7 @@ void plTKInit(uint8_t screen){
 
 void plTKStop(){
 	if(pfbmem == NULL || fbmem == NULL)
-		plPanic("plTKStop: PLTK hasn't been initialized yet", false, true);
+		plTKPanic("plTKStop", PLTK_NOT_INITIALIZED, true);
 
 	backgroundColor = 0;
 	plTKFBClear(0, 0, fbinfo.displaySize[0] - 1, fbinfo.displaySize[1] - 1, true);

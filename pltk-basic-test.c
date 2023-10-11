@@ -1,5 +1,5 @@
 #include <pltk-basic.h>
-#include "pltk-test-font.pft"
+//#include "pltk-test-font.pft"
 
 int main(){
 	plTKBasicInit(PLTK_POINTER_REL, 640, 480, false);
@@ -12,6 +12,7 @@ int main(){
 	lineColor.bytes[3] = 0;
 	plTKBasicWindowLine(20, 30, 30, 20, lineColor);
 
+	/*
 	pltkdata_t fontData = {
 		.dataPtr = {
 			.array = fontface,
@@ -36,6 +37,7 @@ int main(){
 	plTKBasicWindowRenderFont(54, 0, font, 69, lineColor);
 	plTKBasicWindowRenderFont(63, 0, font, 83, lineColor);
 	plTKBasicWindowRenderFont(72, 0, font, 84, lineColor);
+	*/
 	plTKBasicUpdate(true);
 
 	bool endProg = false;

@@ -4,7 +4,7 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 
 	if(plTKIsFBReady() == false)
-		plPanic("plTKCreateWindow: PLTK hasn't been initialized yet", false, true);
+		plTKPanic("plTKCreateWindow", PLTK_NOT_INITIALIZED, true);
 
 	if(x > fbinfo.displaySize[0])
 		x = fbinfo.displaySize[0] - 2;
@@ -16,13 +16,13 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 		height = fbinfo.displaySize[1] - 1;
 
 	plmt_t* windowMT = plMTInit((width * height * fbinfo.bytesPerPixel) * 3);
-	pltkwindow_t* retWindow = plMTAllocE(windowMT, sizeof(pltkwindow_t));
+	pltkwindow_t* retWindow = plMTAlloc(windowMT, sizeof(pltkwindow_t));
 
 	retWindow->position[0] = x;
 	retWindow->position[1] = y;
 	retWindow->dimensions[0] = width;
 	retWindow->dimensions[1] = height;
-	retWindow->windowBuffer = plMTAllocE(windowMT, width * height * fbinfo.bytesPerPixel);
+	retWindow->windowBuffer = plMTAlloc(windowMT, width * height * fbinfo.bytesPerPixel);
 	retWindow->windowId = plTKFBGetNewWindowID();
 	retWindow->mt = windowMT;
 
@@ -34,7 +34,7 @@ pltkwindow_t* plTKCreateWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t 
 
 void plTKWindowClose(pltkwindow_t* window){
 	if(plTKIsFBReady() == false)
-		plPanic("plTKWindowClose: PLTK hasn't been initialized yet", false, true);
+		plTKPanic("plTKWindowClose", PLTK_NOT_INITIALIZED, true);
 
 	plTKFBClear(window->position[0], window->position[1], window->position[0] + window->dimensions[0], window->position[1] + window->dimensions[1], true);
 
@@ -57,14 +57,14 @@ pltkwinfo_t plTKWindowGetInfo(pltkwindow_t* window){
 
 void plTKWindowRender(pltkwindow_t* window){
 	if(plTKIsFBReady() == false)
-		plPanic("plTKWindowRender: PLTK hasn't been initialized yet", false, true);
+		plTKPanic("plTKWindowRender", PLTK_NOT_INITIALIZED, true);
 
 	if(window == NULL)
-		plTKPanic("plTKWindowRender: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowRender", PLRT_ERROR | PLRT_NULL_PTR, true);
 
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 	pltkdata_t data;
-	data.dataPtr.array = window->windowBuffer;
+	data.dataPtr.pointer = window->windowBuffer;
 	data.dataPtr.size = window->dimensions[0] * window->dimensions[1] * fbinfo.bytesPerPixel;
 	data.bytesPerPixel = fbinfo.bytesPerPixel;
 	data.ignoreZero = false;
@@ -74,10 +74,10 @@ void plTKWindowRender(pltkwindow_t* window){
 
 void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
 	if(plTKIsFBReady() == false)
-		plPanic("plTKWindowMove: PLTK hasn't been initialized yet", false, true);
+		plTKPanic("plTKWindowMove", PLTK_NOT_INITIALIZED, true);
 
 	if(window == NULL)
-		plTKPanic("plTKWindowMove: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowMove", PLRT_ERROR | PLRT_NULL_PTR, true);
 
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 	bool updateClear = false;
@@ -93,7 +93,7 @@ void plTKWindowMove(pltkwindow_t* window, uint16_t x, uint16_t y){
 
 void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t color){
 	if(window == NULL)
-		plTKPanic("plTKWindowPixel: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowPixel", PLRT_ERROR | PLRT_NULL_PTR, true);
 
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 
@@ -104,7 +104,7 @@ void plTKWindowPixel(pltkwindow_t* window, uint16_t x, uint16_t y, pltkcolor_t c
 
 void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkcolor_t color){
 	if(window == NULL)
-		plTKPanic("plTKWindowRender: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowRender", PLRT_ERROR | PLRT_NULL_PTR, true);
 
 	if(xStart > window->dimensions[0])
 		xStart = window->dimensions[0];
@@ -163,11 +163,11 @@ void plTKWindowLine(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint
 }
 
 void plTKConvertBPP(pltkdata_t* data, pltkwindow_t* window){
-	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
-		plTKPanic("plTKConvertBPP: Given data buffer is either empty or invalid", false, true);
+	if(data == NULL || data->dataPtr.pointer == NULL || data->dataPtr.size == 0)
+		plTKPanic("plTKConvertBPP", PLTK_INVALID_BUFFER, true);
 
 	if(window == NULL)
-		plTKPanic("plTKConvertBPP: Window handle was set as NULL", false, true);
+		plTKPanic("plTKConvertBPP", PLRT_ERROR | PLRT_NULL_PTR, true);
 
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 
@@ -179,8 +179,8 @@ void plTKConvertBPP(pltkdata_t* data, pltkwindow_t* window){
 
 	size_t bufferPixels = data->dataPtr.size / data->bytesPerPixel;
 	pltkcolor_t pixelHolder;
-	uint8_t* originalPtr = data->dataPtr.array;
-	uint8_t* newPtr = plMTAllocE(window->mt, bufferPixels * fbinfo.bytesPerPixel);
+	uint8_t* originalPtr = data->dataPtr.pointer;
+	uint8_t* newPtr = plMTAlloc(window->mt, bufferPixels * fbinfo.bytesPerPixel);
 
 	switch(data->bytesPerPixel){
 		case 1:
@@ -231,16 +231,16 @@ void plTKConvertBPP(pltkdata_t* data, pltkwindow_t* window){
 
 	data->bytesPerPixel = fbinfo.bytesPerPixel;
 	data->dataPtr.size = bufferPixels * fbinfo.bytesPerPixel;
-	data->dataPtr.array = newPtr;
-	data->dataPtr.mt = window->mt;
+	data->dataPtr.pointer = newPtr;
+	data->mt = window->mt;
 }
 
 void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, uint16_t xStop, uint16_t yStop, pltkdata_t* data){
 	if(window == NULL)
-		plTKPanic("plTKWindowFBWrite: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowFBWrite", PLRT_ERROR | PLRT_NULL_PTR, true);
 
-	if(data == NULL || data->dataPtr.array == NULL || data->dataPtr.size == 0)
-		plTKPanic("plTKWindowFBWrite: Given data buffer is either empty or invalid", false, true);
+	if(data == NULL || data->dataPtr.pointer == NULL || data->dataPtr.size == 0)
+		plTKPanic("plTKWindowFBWrite", PLTK_INVALID_BUFFER, true);
 
 	pltkfbinfo_t fbinfo = plTKFBGetInfo();
 
@@ -257,7 +257,7 @@ void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, u
 		drawDim[1] -= yOverdraw;
 
 	pltkcolor_t pixel;
-	uint8_t* dataByte = data->dataPtr.array;
+	uint8_t* dataByte = data->dataPtr.pointer;
 	for(int i = 0; i < drawDim[1]; i++){
 		for(int j = 0; j < drawDim[0]; j++){
 			for(int k = 0; k < fbinfo.bytesPerPixel; k++)
@@ -267,25 +267,25 @@ void plTKWindowFBWrite(pltkwindow_t* window, uint16_t xStart, uint16_t yStart, u
 			if(!(isZero && data->ignoreZero))
 				plTKWindowPixel(window, xStart + j, yStart + i, pixel);
 
-			if(dataByte < (uint8_t*)data->dataPtr.array + data->dataPtr.size - 1)
+			if(dataByte < (uint8_t*)data->dataPtr.pointer + data->dataPtr.size - 1)
 				dataByte += fbinfo.bytesPerPixel;
 			else
-				dataByte = data->dataPtr.array;
+				dataByte = data->dataPtr.pointer;
 		}
 	}
 
-	if(data->dataPtr.mt == window->mt){
-		plMTFree(window->mt,data->dataPtr.array);
-		data->dataPtr.array = NULL;
-		data->dataPtr.mt = NULL;
+	if(data->mt == window->mt){
+		plMTFree(window->mt,data->dataPtr.pointer);
+		data->dataPtr.pointer = NULL;
+		data->mt = NULL;
 	}
 }
 
 void plTKWindowRenderFont(pltkwindow_t* window, uint16_t x, uint16_t y, pltkfont_t font, uint32_t index, pltkcolor_t color){
 	if(window == NULL)
-		plTKPanic("plTKWindowRenderFont: Window handle was set as NULL", false, true);
+		plTKPanic("plTKWindowRenderFont", PLRT_ERROR | PLRT_NULL_PTR, true);
 
-	uint8_t* startPtr = font.data->dataPtr.array + ((font.fontSize[0] * font.fontSize[1]) * index);
+	uint8_t* startPtr = font.data->dataPtr.pointer + ((font.fontSize[0] * font.fontSize[1]) * index);
 
 	for(int i = 0; i < font.fontSize[1]; i++){
 		for(int j = 0; j < font.fontSize[0]; j++){
