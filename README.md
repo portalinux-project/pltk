@@ -1,4 +1,4 @@
-# The PortaLinux ToolKit
+# pltk
 The PortaLinux ToolKit, or PLTK, is a GUI toolkit made to work with the
 PortaLinux operating system. It will currently only have a fbdev backend, but
 it will also have XCB, Wayland, and libdrm backends. The PLTK API might also get
